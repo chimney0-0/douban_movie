@@ -1,6 +1,6 @@
 package spider;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSON;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -10,17 +10,20 @@ import us.codecraft.webmagic.Site;
 import us.codecraft.webmagic.Spider;
 import us.codecraft.webmagic.processor.PageProcessor;
 
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MovieProcessor implements PageProcessor {
+
+    List<Map<String, Object>> records = new ArrayList<>();
 
     String mainPage = "https://movie.douban.com/people/BBmachtalles/collect";
     Integer totalPage = 1;
 
-    private JSONObject jsonObject = new JSONObject();
-
     private Site site = Site.me().setCharset("utf-8").setRetryTimes(1).setDomain("www.douban.com")
-            .setSleepTime(10000).setRetrySleepTime(10000);
+            .setSleepTime(8000).setRetrySleepTime(10000);
 
     public void process(Page page) {
         String url = page.getUrl().toString();
@@ -36,11 +39,11 @@ public class MovieProcessor implements PageProcessor {
         }
         //对于每个分页，存储条目信息
         else {
-            Elements items = document.select("grid_view item");
+            Elements items = document.select(".grid-view .item");
             for (Element item : items) {
                 String name = item.select(".title em").text();
                 String intro = item.select(".intro").text();
-                Date date = new Date(item.select(".date").text());
+                String date = item.select(".date").text();
                 String tags = item.select(".tags").text();
                 Integer year = null; //年份
                 String nation = ""; //国家地区
@@ -49,9 +52,29 @@ public class MovieProcessor implements PageProcessor {
 
                 if (!tags.equals("")) {
                     String[] strings = tags.split(" ");
-
+                    for (String tag : strings) {
+                        if (tag.matches("\\d+")) year = Integer.parseInt(tag);
+                        else if (tag.matches("=.*?=")) {
+                            tag = tag.substring(1, tag.length() - 1);
+                            nation = nation.equals("") ? tag : nation + ", " + tag;
+                        } else if (tag.matches("【.*?】")) {
+                            tag = tag.substring(1, tag.length() - 1);
+                            series = series.equals("") ? tag : series + ", " + tag;
+                        } else if (!tag.equals("标签:")) {
+                            director = director.equals("") ? tag : director + ", " + tag;
+                        }
+                    }
                 }
 
+                Map<String, Object> info = new HashMap<>();
+                info.put("name", name);
+                info.put("intro", intro);
+                info.put("date", date);
+                info.put("year", year);
+                info.put("director", director);
+                info.put("nation", nation);
+                info.put("series", series);
+                records.add(info);
             }
         }
 
@@ -63,10 +86,16 @@ public class MovieProcessor implements PageProcessor {
 
 
     //执行一次爬虫任务
-    public String getMovieJson(MovieProcessor processor) {
-        Spider.create(processor).addUrl().thread(3).run();
+    public String crawlMovie(MovieProcessor processor) {
+        Spider.create(processor).addUrl(mainPage).thread(3).run();
+        return JSON.toJSONString(records);
+    }
 
-        return jsonObject.toJSONString();
+
+    public static void main(String[] args) {
+        MovieProcessor processor = new MovieProcessor();
+//        Spider.create(processor).addUrl("https://movie.douban.com/people/BBmachtalles/collect").run();
+        System.out.println(processor.crawlMovie(processor));
     }
 
 }

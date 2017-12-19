@@ -8,12 +8,12 @@ import java.util.Properties;
  */
 public class ReadProperties {
 
-    public static String flag;
-    public static String interval;
-    public static String path;
+    public String flag;
+    public String interval;
+    public String jsonpath;
 
 
-    static {
+    public ReadProperties() {
 
         //读取当前目录
         String rootPath = System.getProperty("user.dir");
@@ -26,7 +26,8 @@ public class ReadProperties {
             //获取数据库参数
             flag = properties.getProperty("flag");
             interval = properties.getProperty("interval");
-            path = properties.getProperty("path");
+            jsonpath = properties.getProperty("path");
+            jsonpath = new String(jsonpath.getBytes("ISO8859-1"), "utf-8");//路径转化为utf-8编码
         } catch (FileNotFoundException e) {
             System.out.println(path + " 找不到配置文件！");
             e.printStackTrace();

@@ -1,7 +1,9 @@
 package controller;
 
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import spider.MovieProcessor;
+import us.codecraft.webmagic.Spider;
 import utils.ReadProperties;
 
 import java.io.BufferedWriter;
@@ -13,11 +15,10 @@ public class MyCommand {
 
     static Logger logger = Logger.getLogger(MyCommand.class);
 
-
     public static void read() {
         logger.info("开始读取配置...");
-        int interval = Integer.parseInt(ReadProperties.interval);
-        int flag = Integer.parseInt(ReadProperties.flag);
+        int interval = Integer.parseInt(new ReadProperties().interval);
+        int flag = Integer.parseInt(new ReadProperties().flag);
         if (flag == 0) {
             logger.info("当前状态为停止，将在" + interval + "分钟后重新读取配置");
         } else if (flag == 1) {
@@ -36,20 +37,27 @@ public class MyCommand {
     }
 
     public static void run() {
-        String path = ReadProperties.path;
+        String path = new ReadProperties().jsonpath;
         try {
             MovieProcessor processor = new MovieProcessor();
-            String json = processor.getMovieJson(processor);
+            String json = processor.crawlMovie(processor);
+            File file = new File(path);
+            File fileParent = file.getParentFile();
+            if (!fileParent.exists()) {
+                fileParent.mkdirs();
+            }
+            file.createNewFile();
             BufferedWriter br = new BufferedWriter(new FileWriter(new File(path)));
             br.write(json);
             br.close();
         } catch (IOException e) {
-            logger.info(path + "路径不存在！");
+            logger.info(path + "路径有误！");
         }
     }
 
 
     public static void main(String[] args) {
+        BasicConfigurator.configure();
         read();
     }
 
